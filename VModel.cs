@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace UnityCable
 {
+    // [ExecuteAlways]
     public class VModel: MonoBehaviour
     {
         [Serializable]
@@ -28,11 +29,18 @@ namespace UnityCable
 
             [NonSerialized]
             public Delegate fieldSetter;
+            [NonSerialized]
+            public Delegate fieldGetter;
 
             public void Call(object value)
             {
                 if (this.fieldSetter == null || this.component == null) return;
                 this.fieldSetter.DynamicInvoke(component, value);
+            }
+            public object GetCall()
+            {
+                if (this.fieldGetter == null || this.component == null) return null;
+                return this.fieldGetter.DynamicInvoke(component);
             }
         }
 
@@ -56,21 +64,10 @@ namespace UnityCable
         private static Dictionary<string, DataBaseSo> _data = new();
         private static Dictionary<string, List<DataBaseSo>> _listData = new();
 
-        // [NonSerialized]
-        // public System.Object proxy;
-
         private void Awake()
         {
             if (this.auto)
                 this.BuildCallCache();
-        }
-
-        [ContextMenu("TEST")]
-        public void T()
-        {
-            // var a = DispatchProxy.Create(typeof(TestDataSo.A), typeof(TestDataSo.ITextData));
-            // Debug.Log(a);
-            Debug.Log(1111);
         }
 
         public DataBaseSo BuildCallCache()
@@ -123,8 +120,17 @@ namespace UnityCable
                 MemberExpression propExp = Expression.Property(targetExp, property);
                 BinaryExpression assignExp = Expression.Assign(propExp, valueExp);
                 Delegate setter = Expression.Lambda(assignExp, targetExp, valueExp).Compile();
+                // getter
+                Expression propertyExpr = Expression.Property(
+                    targetExp,
+                    property
+                );
+                var lambda0 = Expression.Lambda(propertyExpr,targetExp);
+                Delegate getter = lambda0.Compile();
                 modelItem.fieldSetter = setter;
+                modelItem.fieldGetter = getter;
                 dict[$"set_{modelItem.dataField}"] = modelItem;
+                dict[$"get_{modelItem.dataField}"] = modelItem;
             }
             else
             {

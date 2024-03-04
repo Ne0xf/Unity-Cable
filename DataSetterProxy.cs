@@ -7,8 +7,9 @@ namespace UnityCable
 {
     public class DataSetterProxy<T>: DispatchProxy
     {
-        private const string withKey = "set";
-        private static readonly string[] blacklist = { "get_model", "set_model" };
+        private const string withSetKey = "set";
+        private const string withGetKey = "get";
+        // private static readonly string[] blacklist = { "get_model", "set_model" };
         private T Target { get; set; }
         private Dictionary<string, VModel.ModelItem> callDictionary;
 
@@ -37,25 +38,30 @@ namespace UnityCable
         {
             try
             {
-                object result = targetMethod.Invoke(Target, args);
 
-                for (int i = 0; i < blacklist.Length; i++)
+                // for (int i = 0; i < blacklist.Length; i++)
+                // {
+                //     if (targetMethod.Name == blacklist[i])
+                //     {
+                //         return null;
+                //     }
+                // }
+                
+                if (this.callDictionary.TryGetValue(targetMethod.Name, out VModel.ModelItem modelItem))
                 {
-                    if (targetMethod.Name == blacklist[i])
+                    if (targetMethod.Name.StartsWith(withSetKey))
                     {
-                        return result;
-                    }
-                }
-
-                if (targetMethod.Name.StartsWith(withKey))
-                {
-                    if (this.callDictionary.TryGetValue(targetMethod.Name, out VModel.ModelItem modelItem))
-                    {
+                        object result = targetMethod.Invoke(Target, args);
                         modelItem.Call(args[0]);
+                        return result;
+                    }else if (targetMethod.Name.StartsWith(withGetKey))
+                    {
+                        return modelItem.GetCall();
                     }
+                    
                 }
 
-                return result;
+                return null;
             }
             catch (Exception ex)
             {
